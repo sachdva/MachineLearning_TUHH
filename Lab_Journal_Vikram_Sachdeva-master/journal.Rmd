@@ -1,0 +1,609 @@
+---
+title: "Journal (reproducible report)"
+author: "Vikram Sachdeva"
+date: "2020-11-18"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    collapsed: false
+    number_sections: true
+    toc_depth: 3
+    #code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=FALSE,warning=FALSE, cache=TRUE)
+```
+<!-- Sys.setenv(LAB_KEY = "apple") -->
+<!-- source("build_website.R") -->
+Last compiled: `r Sys.Date()`
+
+# Intro to the tidyverse
+
+## Part 1 
+**TODO** Analyze the sales by location (state) with a bar plot. Since state and city are multiple features (variables), they should be split. Which state has the highes revenue? Replace your bike_orderlines_wrangled_tbl object with the newly wrangled object (with the columns state and city).
+
+```{r plot, fig.width=10, fig.height=7}
+# Data Science at TUHH ------------------------------------------------------
+# SALES ANALYSIS ----
+
+# 1.0 Load libraries ----
+
+library(tidyverse)
+library(readxl)
+library(lubridate)
+
+# 2.0 Importing Files ----
+bikes_tbl      <- read_excel(path = "../00_data/01_bike_sales/01_raw_data/bikes.xlsx")
+orderlines_tbl <- read_excel("../00_data/01_bike_sales/01_raw_data/orderlines.xlsx")
+
+# Not necessary for this analysis, but for the sake of completeness
+bikeshops_tbl  <- read_excel("../00_data/01_bike_sales/01_raw_data/bikeshops.xlsx")
+
+
+# 5.0 Wrangling Data ----
+
+bike_orderlines_wrangled_tbl <- bike_orderlines_joined_tbl %>%
+  # 5.1 Separate category name
+  separate(col    = category,
+           into   = c("category.1", "category.2", "category.3"),
+           sep    = " - ") %>%
+  
+  # 5.2 Add the total price (price * quantity) 
+  # Add a column to a tibble that uses a formula-style calculation of other columns
+  mutate(total.price = price * quantity) %>%
+  
+  # 5.3 Optional: Reorganize. Using select to grab or remove unnecessary columns
+  # 5.3.1 by exact column name
+  select(-...1, -gender) %>%
+  
+  # 5.3.2 by a pattern
+  # You can use the select_helpers to define patterns. 
+  # Type ?ends_with and click on Select helpers in the documentation
+  select(-ends_with(".id")) %>%
+  
+  # 5.3.3 Actually we need the column "order.id". Let's bind it back to the data
+  bind_cols(bike_orderlines_joined_tbl %>% select(order.id)) %>% 
+  
+  # 5.3.4 You can reorder the data by selecting the columns in your desired order.
+  # You can use select_helpers like contains() or everything()
+  select(order.id, contains("order"), contains("model"), contains("category"),
+         price, quantity, total.price,
+         everything()) %>%
+  # 5.4 Rename columns because we actually wanted underscores instead of the dots
+  # (one at the time vs. multiple at once)
+  rename(bikeshop = name) %>%
+  set_names(names(.) %>% str_replace_all("\\.", "_"))
+
+
+#ugh now some comments that actually make sense plz 
+#new table just separated the columns
+sales_by_state_tbl  <- bike_orderlines_wrangled_tbl %>%
+  # 5.1 Separate category name
+  separate(col    = location,
+           into   = c("city", "state"),
+           sep    = ", ")  %>%
+  
+  # Select columns
+  select(state, total_price)  %>%
+  
+  # Grouping by year and summarizing sales
+  group_by(state) %>%
+  summarize(sales = sum(total_price))  %>%
+  mutate(sales_text = scales::dollar(sales, big.mark = ".", 
+                                   decimal.mark = ",", 
+                                   prefix = "", 
+                                   suffix = " €"))
+  
+  
+##visualisation of 12 bar plots lol? 
+
+sales_by_state_tbl %>%
+  
+  # Setup canvas with the columns year (x-axis) and sales (y-axis)
+  ggplot(aes(x = state, y = sales)) +
+  
+  # Geometries
+  geom_col(fill = "#2DC6D6") + # Use geom_col for a bar plot
+  geom_label(aes(label = sales_text)) +  #  Adding labels to the bars
+  scale_y_continuous(labels = scales::dollar_format(big.mark = ".", 
+                                                    decimal.mark = ",", 
+                                                    prefix = "", 
+                                                    suffix = " €")) +
+   labs(
+    title    = "Bicycle Sales in German States",
+    subtitle = "Given the Data Set between years 2015-2019",
+     x = "", # Override defaults for x and y
+     y = "Total Bicycle Sales"
+   ) +
+
+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+## Part 2 
+
+**TODO:** Analyze the sales by location and year (facet_wrap). Because there are 12 states with bike stores, you should get 12 plots.
+```{r plot2, fig.height=7, fig.width=10, message=TRUE}
+#Analyze the sales by location and year, total sales (x) (facet_wrap). 
+#Because there are 12 states with bike stores, you should get 12 plots.
+
+sales_by_year_cat_1_tbl <- bike_orderlines_wrangled_tbl %>%
+  # 5.1 Separate category name
+  separate(col    = location,
+           into   = c("city", "state"),
+           sep    = ", ")  %>%
+  
+  # Select columns and add a year
+  select(order_date, state, total_price) %>%
+  mutate(year = year(order_date)) %>%
+  
+  # Group by and summarize year and main catgegory
+  group_by(state, year) %>%
+  summarise(sales = sum(total_price)) %>%
+  ungroup()
+
+
+#visualization 
+sales_by_year_cat_1_tbl %>%
+  
+  # Set up x, y, fill
+  ggplot(aes(x = year, y = sales, fill = state)) +
+  
+  # Geometries
+  geom_col() + # Run up to here to get a stacked bar plot
+  
+  # Facet
+  facet_wrap(~ state) +
+  scale_y_continuous(labels = scales::dollar_format(big.mark = ".", 
+                                                    decimal.mark = ",", 
+                                                    prefix = "", 
+                                                    suffix = " €")) +
+  
+  labs(
+    title = "Total sales by year in German States",
+    subtitle = "In years 2015-2019",
+    fill = "Main category", # Changes the legend name
+    x = "", # Override defaults for x and y
+    y = "Total Sales"
+  )
+```
+
+# Data Acquisition 
+
+## Problem 1 
+
+**TODO:**Get some data via an API. There are millions of providers, that offer API access for free and have good documentation about how to query their service. You just have to google them. You can use whatever service you want. For example, you can get data about your listening history (spotify), get data about flights (skyscanner) or just check the weather forecast.
+```{r plot3, fig.width=10, fig.height=7}
+library(httr)
+library(jsonlite)
+library(purrr)
+resp <- GET("https://pokeapi.co/api/v2/berry/?limit=10000")
+
+
+#make readable and put to a new variable 
+dt <- resp %>% 
+  .$content %>% 
+  rawToChar() %>% 
+  fromJSON()
+
+#acess 1-10 names
+abbname <- dt$results$name[1:10]
+#print on every new line through purr
+abbname_list <- map(abbname, print)
+```
+## Problem 2
+
+**TODO:** Scrape one of the competitor websites of canyon (either https://www.rosebikes.de/ or https://www.radon-bikes.de) and create a small database. The database should contain the model names and prices for at least one category. Use the selectorgadget to get a good understanding of the website structure.
+```{r plot4, fig.width=10, fig.height=7}
+library(tidyverse) # Main Package - Loads dplyr, purrr, etc.
+library(rvest)     # HTML Hacking & Web Scraping
+library(xopen)     # Quickly opening URLs
+library(jsonlite)  # converts JSON files to R objects
+library(glue)      # concatenate strings
+library(stringi)   # character string/text processing
+# 1.1 COLLECT PRODUCT FAMILIES ----
+
+
+url_home          <- "https://www.radon-bikes.de/"
+
+# Read in the HTML for the entire webpage
+html_home         <- read_html(url_home)
+
+bike_family_node <- html_home %>%
+  #find all classes that are under the menu
+  html_nodes(css = ".megamenu__item") 
+  #grab the links with a lil help from helper func 
+links <- sapply(bike_family_node, function(x) {x %>% html_nodes("a") %>% html_attr("href")})
+
+  #delete the wear menu 
+links <- links[1:8] %>%
+  
+    # Convert vector to tibble
+  enframe(name = "position", value = "subdirectory") %>%
+    
+    # Add the domain, because we will get only the subdirectories
+    mutate(
+      url = glue("https://www.radon-bikes.de{subdirectory}")
+    )  %>%
+   #get rid of subdirectory col 
+   distinct(url)
+
+#quit using the template bc it's just complicated 
+#make a dataframe with the names
+dtbl <-data.frame(cat1=character(0),cat2=character(0),name=character(0),price=integer(0))
+
+
+for (i in 1:8) {
+  #look at each url
+  html_bike_category <- read_html(links$url[i])
+  bike_cat_node <- html_bike_category %>%
+  #this category was broad and included name and price
+  html_nodes(css = ".columns.large-6.medium-6.small-12.right") 
+   names <-  vector()
+   prc <- vector()
+  #for all bikes on page 
+  for (n in 1:length(bike_cat_node)) {
+   #give me the names
+   names <-  names %>% c(xml_child(xml_child(bike_cat_node[[n]], 1), 1) %>% html_text())
+   #give me the prices
+   prc <- prc %>% c(xml_child(xml_child(xml_child(xml_child(bike_cat_node[[n]], 3), 1), 2), 1) %>% 
+                      html_text())
+  }
+  #all bikes here are same cat1 and cat2 from url
+  
+   #this took a day, regex to find after de/ and until /
+  cat1w = str_extract(links$url[i], "(?<=de/)(.*?(?=/))")
+  #regex to find between  /  / - and the group 1 not full match
+  cat2w = str_match(links$url[i], "^(?:[^/]*/){4}([^/]*)")[,2]
+  #make the names to a vector
+  cat1v = rep(cat1w,n)
+  cat2v = rep(cat2w,n)
+  dtbl <- dtbl %>%
+     rbind(data.frame(cat1v, cat2v, names, prc))
+}
+dtbl
+```
+# Data Wrangling 
+
+## Problem 1 
+
+**TODO:**
+Patent Dominance: What US company has the most patents? List the 10 US companies with the most aaigned/granted patents.
+```{r plot5, fig.width=10, fig.height=7}
+# In the Patents_DB_dictionary_bulk_downloads.xlsx file you will find information about the datatypes for each column of the tables. This will help you to create the “recipe” to import the data.
+# 
+# Answer the following questions with that data:
+#   
+#   Patent Dominance: What US company has the most patents? List the 10 US companies with the most aaigned/granted patents.
+# Recent patent acitivity: What US company had the most patents granted in 2019? List the top 10 companies with the most new granted patents for 2019.
+# Innovation in Tech: What is the most innovative tech sector? For the top 10 companies with the most patents, what are the top 5 USPTO tech main classes?
+#   Answer the question with data.table or dplyr. You will need the following tables for each question:
+#   
+#   Question	Table
+# 1	assignee, patent_assignee
+# 2	assignee, patent_assignee, patent
+# 3	assignee, patent_assignee, uspc
+
+library(data.table)
+library(tidyverse)
+
+# Counter
+library(tictoc)
+library(furrr)     # Parallel Processing using purrr (iteration)
+plan("multiprocess")
+
+
+library(vroom)
+# col_types <- list(
+#   id = col_character(),
+#   type = col_skip(),
+#   number = col_character(),
+#   country = col_skip(),
+#   date = col_date("%Y-%m-%d"),
+#   abstract = col_skip(),
+#   title = col_skip(),
+#   kind = col_skip(),
+#   num_claims = col_double(),
+#   filename = col_skip(),
+#   withdrawn = col_skip()
+# )
+# col_types_as <- list(
+#   id = col_character(),
+#   type = col_double(),
+#   name_first = col_skip(), 
+#   name_last = col_skip(), 
+#   organization = col_character()
+# )
+# 
+# col_types_us <- list(
+#   uuid = col_skip(),
+#   patent_id = col_double(),
+#   mainclass_id = col_character(), 
+#   subclass_id = col_skip(), 
+#   sequence = col_skip()
+# )
+# col_types_ptas <- list(
+#   patent_id = col_character(),
+#   assignee_id = col_character(), 
+#   location_id = col_character()
+# )
+# 
+# 
+# patent_tbl <- vroom(
+#   file       = "../patent.tsv", 
+#   delim      = "\t", 
+#   col_types  = col_types,
+#   na         = c("", "NA", "NULL")
+# ) 
+
+# Columns: 11
+# $ id         <chr> "id", "10000000", "10000001", "10000002", "10000003", "10000004", "10000005", "10000006", "100...
+# $ type       <chr> "type", "utility", "utility", "utility", "utility", "utility", "utility", "utility", "utility"...
+# $ number     <chr> "number", "10000000", "10000001", "10000002", "10000003", "10000004", "10000005", "10000006", ...
+# $ country    <chr> "country", "US", "US", "US", "US", "US", "US", "US", "US", "US", "US", "US", "US", "US", "US",...
+# $ date       <date> NA, 2018-06-19, 2018-06-19, 2018-06-19, 2018-06-19, 2018-06-19, 2018-06-19, 2018-06-19, 2018-...
+# $ abstract   <chr> "abstract", "A frequency modulated (coherent) laser detection and ranging system includes a re...
+# $ title      <chr> "title", "Coherent LADAR using intra-pixel quadrature detection", "Injection molding machine a...
+# $ kind       <chr> "kind", "B2", "B2", "B2", "B2", "B2", "B2", "B2", "B2", "B2", "B2", "B2", "B1", "B2", "B2", "B...
+# $ num_claims <dbl> NA, 20, 12, 9, 18, 6, 4, 8, 24, 11, 21, 20, 30, 21, 6, 22, 21, 13, 11, 7, 4, 21, 20, 25, 9, 18...
+# $ filename   <chr> "filename", "ipg180619.xml", "ipg180619.xml", "ipg180619.xml", "ipg180619.xml", "ipg180619.xml...
+# $ withdrawn  <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA...
+# 
+# assig_tbl <- vroom(
+#   file       = "../assignee.tsv", 
+#   delim      = "\t", 
+#   col_types  = col_types_as,
+#   na         = c("", "NA", "NULL")
+# ) 
+
+# Columns: 5
+# $ id           <chr> "id", "org_0009QzvplICSOR6dUi4v", "org_000ey6U69efJ6KrjwQW8", "org_00133Cew93J5qW1EBpJT", "o...
+# $ type         <dbl> NA, 2, 3, 2, 3, 3, 3, 2, 2, 3, 3, 3, 2, 2, 2, 3, 7, 3, 3, 2, 2, 3, 2, 3, 2, 3, 2, 2, 3, 3, 3...
+# $ name_first   <chr> "name_first", NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA...
+# $ name_last    <chr> "name_last", NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,...
+# # $ organization <chr> "organization", "Barr Engineering Co.", "Lhoist Recherche et Developpement S.A.", "Weber Gen...
+# us_tbl <- vroom(
+#   file       = "../uspc.tsv", 
+#   delim      = "\t", 
+#   col_types  = col_types_us,
+#   na         = c("", "NA", "NULL")
+# ) #names are already given in file we don't need to add names
+# # Columns: 5
+# $ uuid         <chr> "uuid", "0000a93s9j65x9kn49g7htn81", "0000cge486wjnhsdt8p0magoi", "0000e55wuix66snthemha7ggl...
+# $ patent_id    <dbl> NA, 5106549, 5939975, 7358284, 7643522, 5953933, 4246268, 8539174, 4050396, 7081798, 8270001...
+# $ mainclass_id <chr> "mainclass_id", "264", "207", "424", "372", "62", "546", "710", "114", "332", "358", "435", ...
+# $ subclass_id  <chr> "subclass_id", "264/DIG19", "207/105", "424/499", "372/32", "62/420", "546/314", "710/74", "...
+# $ sequence     <dbl> NA, 4, 4, 3, 5, 1, 3, 8, 0, 1, 0, 7, 7, 1, 0, 0, 0, 1, 4, 2, 0, 1, 6, 2, 0, 5, 2, 1, 7, 0, 0...
+
+# ptas_tbl <- vroom(
+#   file       = "../patent_assignee.tsv", 
+#   delim      = "\t", 
+#   col_types  = col_types_ptas,
+#   na         = c("", "NA", "NULL")
+# )  
+
+# Columns: 3
+# $ patent_id   <chr> "patent_id", "4488683", "5856666", "5204210", "5302149", "D397841", "9104354", "6584517", "45...
+# $ assignee_id <chr> "assignee_id", "org_zzDG6gSOdiYZdFsxQuQR", "org_fBtpUrdoVp5Lzvqma3Lv", "org_uBBq49OpEQSGb2SJJ...
+# $ location_id <chr> "location_id", "907f8c10-a4aa-48b5-8dbd-0a4c27e661be", "a1684b60-8a79-4269-ab5e-2bd6c54c5a25"...
+
+
+# setDT(patent_tbl)
+# setDT(ptas_tbl)
+# setDT(assig_tbl)
+# setDT(us_tbl)
+
+# saveRDS(patent_tbl,"patent_tbl.rds")
+# saveRDS(ptas_tbl,"ptas_tbl.rds")
+# saveRDS(assig_tbl,"assig_tbl.rds")
+# saveRDS(us_tbl,"us_tbl.rds")
+# 
+patent_tbl <- readRDS("../patent_tbl.rds")
+ptas_tbl <- readRDS("../ptas_tbl.rds")
+assig_tbl <- readRDS("../assig_tbl.rds") %>% filter(type == 2) 
+us_tbl <- readRDS("../us_tbl.rds")
+
+
+colnames(assig_tbl)[1] <- "assignee_id"
+
+ptas_tbl_us <- ptas_tbl%>%
+  left_join(assig_tbl, by = "assignee_id") 
+
+  ptas_tbl_us<- na.omit(ptas_tbl_us)
+#make a new table of from assignee IDs (col2) in pat ass tbl and and count frequency of em
+cpidmatch <- data.frame(table(ptas_tbl_us[,2])) %>% 
+  arrange(desc(Freq))
+#find the index which the ids with most patents occur in the assignee table
+#get the company name - col 3
+idx = 0
+topc = vector()
+for (i in 1:10) {
+  idx = which(as.character(cpidmatch[i,1]) == assig_tbl[,1])
+  topc[i] <- assig_tbl[idx,3]
+}
+
+#which(as.character(bob2) %in% as.vector(cpid))
+#this didn't work, why? 
+
+
+cp_list <- map(topc, print)
+
+```
+
+## Problem 2 
+
+**TODO:**
+Recent patent acitivity: What US company had the most patents granted in 2019? List the top 10 companies with the most new granted patents for 2019.
+```{r}
+
+###pt2
+#give better id name so I see connection
+colnames(patent_tbl)[1] <- "patent_id"
+#for patents select data we need, get year, filter, join by patent id 
+cpy19 <- patent_tbl %>%
+  select(patent_id, date) %>%
+  mutate(date = year(date)) %>%
+  filter(date == 2019) %>%
+  left_join(ptas_tbl_us, by = "patent_id")
+#do part 1 again 
+cpidmatchyr <- data.frame(table(cpy19[,3])) %>% 
+  arrange(desc(Freq))
+
+#find the index which the ids with most patents occur in the assignee table
+#get the company name - col 3
+idx = 0
+topc19 = vector()
+
+for (i in 1:10) {
+  idx = which(as.character(cpidmatchyr[i,1]) == assig_tbl[,1])
+  topc19[i] <- assig_tbl[idx,3]
+}
+
+
+cp_lt19 <- map(topc19, print)
+
+```
+
+## Problem 3
+
+**TODO:**
+Innovation in Tech: What is the most innovative tech sector? For the top 10 companies with the most patents, what are the top 5 USPTO tech main classes?
+```{r}
+###part 3
+#find us table only sequence is 0 
+us_tblf <- us_tbl %>%
+  select(sequence, mainclass_id, patent_id ) %>%
+  filter(sequence == 0) %>%
+  left_join(ptas_tbl_us, by = "patent_id")%>%
+  left_join(assig_tbl, by = "assignee_id") %>%
+  select(patent_id, organization.x, mainclass_id) 
+
+us_tblf<- na.omit(us_tblf)
+#cpid has the top company names and ids look at the top names 
+#and match them to the ones in us_tblf and find the mainclass in there. 
+idx = 0
+topcus = vector()
+#find the indicies of the top companies and find the mainclass of that
+#just a different column
+for (i in 1:10) {
+  idx = which(as.character(topc[i]) == us_tblf[,2])
+  topcus[i] <- us_tblf[idx,3]
+}
+#this is for every company, but we care of them COMBINED 
+#unlist the list (flatten)
+maintp <- data.frame(table(unlist(topcus))) %>% 
+  arrange(desc(Freq))
+
+tp_us <- map(as.character(maintp[1:10,1]), print)
+
+
+```
+
+# Data Visualization 
+
+## Problem 1 
+
+**TODO:**
+Goal: Map the time course of the cumulative Covid-19 cases! 
+```{r plot6, fig.width=10, fig.height=7}
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(maps)
+library(viridis)
+
+library(data.table)
+
+covid_data_tbl <- read_csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv") 
+
+tsk4 <- covid_data_tbl %>%
+  select(countriesAndTerritories, dateRep, cases ) %>%
+  filter((countriesAndTerritories == "United_States_of_America") | (countriesAndTerritories == "France") |
+         (countriesAndTerritories == "Germany") | (countriesAndTerritories == "Spain") |
+         (countriesAndTerritories == "United_Kingdom"))  %>%
+  mutate(dateRep = dmy(dateRep)) %>% 
+  arrange(desc(dateRep)) %>% 
+  arrange(countriesAndTerritories,dateRep) %>% 
+  group_by(countriesAndTerritories) %>% 
+mutate(cc = cumsum(cases))  
+
+
+tsk4 %>% ggplot(aes(dateRep, cc, colour = countriesAndTerritories)) + 
+  geom_line(size = .5) +
+  geom_point()  +
+  scale_x_date(name="Month", date_breaks="1 month", date_labels="%b")+
+  labs(
+    title = "COVID-19 confirmed cases worldwide",
+    subtitle = "As of 11/02/2020, Europe had more cases than the USA"
+  ) + 
+  xlab("Year 2020") + 
+  ylab("Cumulative Cases") +
+  labs(color='Country') + 
+  scale_color_viridis(discrete = TRUE, option = "D")+
+  theme_minimal()+
+  theme(legend.position="bottom") + 
+  theme(panel.grid.minor = element_line(size = 1), panel.grid.major = element_line(size = 2)) 
+  
+
+
+#lol adding the cases for EU is optional 
+#a solution would be filter by continentExp %>% and readd as a new country 
+#coveu <- covid_data_tbl %>% 
+```
+
+## Problem 2
+
+**TODO:**
+Visualize the distribution of the mortality rate (deaths / population) with geom_map().
+
+```{r plot7, fig.width=10, fig.height=7}
+
+world <- map_data("world")
+
+
+tsk5 <- covid_data_tbl %>%
+  mutate(across(countriesAndTerritories, str_replace_all, "_", " ")) %>%
+  mutate(countriesAndTerritories = case_when(
+    
+    countriesAndTerritories == "United Kingdom" ~ "UK",
+    countriesAndTerritories == "United States of America" ~ "USA",
+    countriesAndTerritories == "Czechia" ~ "Czech Republic",
+    TRUE ~ countriesAndTerritories
+    
+  )) %>% 
+  mutate(dateRep = dmy(dateRep)) %>% 
+  arrange(desc(dateRep)) %>% 
+  arrange(countriesAndTerritories,dateRep) %>% 
+  group_by(countriesAndTerritories) %>% 
+  mutate(cdth = cumsum(deaths))  
+colnames(tsk5)[7] <- "region"
+
+#LOL SO STUPID I COULD HAVE JUST LOOKED AT LAST DATE 
+#oh god I'm not going to explain this I did magic to get so little
+idx <- vector()
+r=1
+for (i in 1:nrow(tsk5)){
+  if  ( i == nrow(tsk5) ) {break}
+  if (as.logical(tsk5[i+1,13]<tsk5[i,13])){
+    idx[r] <- i
+    r=r+1
+  }
+}
+idx[length(idx)+1] = nrow(tsk5)
+tsk5f <- tsk5[idx,] %>% 
+  mutate(mortality = cdth/popData2019)  %>%
+  left_join(world, by = "region")
+
+ggplot(tsk5f, aes(x = long, y = lat, group = group)) + 
+  geom_polygon(aes(fill = mortality), color = "white") +
+  theme_minimal() +
+  ggtitle("Confirmed COVID-19 deaths relative to the size of the population",
+          subtitle = "More than 1.2 Million confirmed COVID-19 deaths worldwide") +
+  theme(axis.line = element_blank(), axis.text = element_blank(),
+      axis.ticks = element_blank(), axis.title = element_blank()) +
+  scale_fill_viridis(option="inferno") + labs(fill = "Mortality Rate")
+
+
+```

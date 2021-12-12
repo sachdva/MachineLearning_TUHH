@@ -1,0 +1,13 @@
+---
+title: "Vik's Journal"
+output: html_document
+---
+
+<div style="padding-top: 30px;"></div>
+
+![](images/logo.png)
+
+# **My Data Science Journal**
+
+Welcome! This website serves as my submittable for the Introduction to Data Science served at the Institute of Entrepreneurship at TUHH: 
+

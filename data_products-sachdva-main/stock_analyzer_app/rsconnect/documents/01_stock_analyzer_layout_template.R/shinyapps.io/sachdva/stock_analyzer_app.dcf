@@ -1,0 +1,13 @@
+name: stock_analyzer_app
+title: stock_analyzer_app
+username:
+account: sachdva
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4292326
+bundleId: 4734240
+url: https://sachdva.shinyapps.io/stock_analyzer_app/
+when: 1624116993.54298
+lastSyncTime: 1624116993.54298
+asMultiple: FALSE
+asStatic: FALSE

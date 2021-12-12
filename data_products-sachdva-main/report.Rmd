@@ -1,0 +1,125 @@
+---
+title: "Sales Report"
+author: "Vikram Sachdeva"
+date: "06/19/2021"
+always_allow_html: true
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+  html_document:
+    code_folding: none
+    df_print: paged
+    highlight: tango
+    number_sections: yes
+    theme: flatly
+    toc: yes
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    echo = TRUE,
+    eval = TRUE,
+    message = FALSE,
+    warning = FALSE,
+    dpi = 300,
+    fig.align = "center"
+    )
+
+# See Options: knitr::opts_chunk$get()
+```
+
+```{r intro, include=FALSE}
+library(tidyverse)
+library(plotly)
+library(tinytex)
+
+# Bike data
+bikes_tbl <- readRDS("~/DataS/DS Products/00_bike_data/bikes_tbl.rds")
+bikeshops_tbl <- readRDS("~/DataS/DS Products/00_bike_data/bikeshops_tbl.rds")
+orderlines_tbl <- readRDS("~/DataS/DS Products/00_bike_data/orderlines_tbl.rds")
+source("~/DataS/DS Products/00_scripts/plot_sales.R")
+
+bike_orderlines_tbl <- orderlines_tbl %>%
+    left_join(bikes_tbl,     by = c("product_id" = "bike_id")) %>%
+    left_join(bikeshops_tbl, by = c("customer_id" = "bikeshop_id")) %>%
+    mutate(total_price = price_euro * quantity)
+
+```
+# Total Sales Charts {.tabset .tabset-fade .tabset-pills}
+## Quarterly Sales Trends
+```{r echo=FALSE}
+plot_total_sales(unit = "quarter", date_format = "%B %Y", interactive = FALSE)
+```
+## Monthly Sales Trends
+```{r, echo=FALSE}
+plot_total_sales(unit = "monthly", date_format = "%B %Y", interactive = FALSE)
+```
+## Weekly Sales Trends
+```{r, echo=FALSE}
+plot_total_sales(unit = "weekly", date_format = "%B %d, %Y", interactive = FALSE)
+```
+# Category Sales Charts {.tabset .tabset-fade .tabset-pills}
+## Road
+### Quarterly
+```{r, echo=FALSE}
+plot_categories(category_1 = "Road", 
+                category_2 = "All", 
+                unit = "quarter",
+                ncol = 1, 
+                scales = "free_y", 
+                date_format = "%Y-%m-%d",
+                interactive = FALSE)
+```
+### Monthly
+```{r, echo=FALSE}
+plot_categories(category_1 = "Road", 
+                category_2 = "All", 
+                unit = "monthly",
+                ncol = 1, 
+                scales = "free_y", 
+                date_format = "%Y-%m-%d",
+                interactive = FALSE)
+```
+### Weekly
+```{r, echo=FALSE}
+plot_categories(category_1 = "Road", 
+                category_2 = "All", 
+                unit = "weekly",
+                ncol = 1, 
+                scales = "free_y", 
+                date_format = "%Y-%m-%d",
+                interactive = FALSE)
+```
+## Mountain
+### Quarterly
+```{r, echo=FALSE}
+plot_categories(category_1 = "Mountain", 
+                category_2 = "All", 
+                unit = "quarter",
+                ncol = 1, 
+                scales = "free_y", 
+                date_format = "%Y-%m-%d",
+                interactive = FALSE)
+```
+### Monthly
+```{r, echo=FALSE}
+plot_categories(category_1 = "Mountain", 
+                category_2 = "All", 
+                unit = "monthly",
+                ncol = 1, 
+                scales = "free_y", 
+                date_format = "%Y-%m-%d",
+                interactive = FALSE)
+```
+### Weekly
+```{r, echo=FALSE}
+plot_categories(category_1 = "Mountain", 
+                category_2 = "All", 
+                unit = "weekly",
+                ncol = 1, 
+                scales = "free_y", 
+                date_format = "%Y-%m-%d",
+                interactive = FALSE)
+```

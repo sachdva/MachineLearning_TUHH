@@ -1,0 +1,13 @@
+name: SalesDashboard
+title: SalesDashboard
+username:
+account: sachdva
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4199248
+bundleId: 4650467
+url: https://sachdva.shinyapps.io/SalesDashboard/
+when: 1622199159.28674
+lastSyncTime: 1622199159.28674
+asMultiple: FALSE
+asStatic: FALSE

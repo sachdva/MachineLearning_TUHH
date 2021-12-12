@@ -1,0 +1,13 @@
+name: flexdashboard
+title: flexdashboard
+username:
+account: sachdva
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4292298
+bundleId: 4734231
+url: https://sachdva.shinyapps.io/flexdashboard/
+when: 1624116706.9587
+lastSyncTime: 1624116706.9587
+asMultiple: FALSE
+asStatic: FALSE
